@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="text-center">내 라이브러리</h1>
+    <div id="savedTracksContainer" class="row"></div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
+<!--sdk: 곡 검색, 재생목록 만들기, 곡 재생 기능-->
+<script>
+    let isPlayerReady = false; // 플레이어 준비 상태
+    let player; // Spotify Player의 인스턴스
+    let deviceId = null; // Spotify 디바이스 ID
+
+    const accessToken = "{{ access_token }}"; // Django 템플릿에서 액세스 토큰을 가져온다
+
+    // Spotify 플레이어를 초기화하는 부분
+    document.addEventListener("DOMContentLoaded", () => {
+    // domcontentloaded : html 로딩 완료 시 실행되는 이벤트
+        window.onSpotifyWebPlaybackSDKReady = () => {
+            console.log('Spotify Web Playback SDK가 성공적으로 로드되었습니다.');
+            player = new Spotify.Player({
+                name: 'Spotipie Web Player',
+                getOAuthToken: cb => { cb(accessToken); },
+                volume: 0.5
+            });
+
+            player.addListener('ready', ({ device_id }) => {
+                console.log('Ready with Device ID', device_id);
+                window.deviceId = device_id; // deviceId를 전역 변수로 설정
+                isPlayerReady = true; // 플레이어 준비 상태 업데이트
+            });
+
+            player.connect();
+            // 플레이어를 spotify와 연결
+        };
+
+        // 로컬 스토리지에서 저장된 트랙을 가져온다.
+        const savedTracks = JSON.parse(localStorage.getItem('savedTracks')) || [];
+        const container = document.getElementById('savedTracksContainer');
+
+        if (savedTracks.length > 0) {
+            savedTracks.forEach(track => {
+                const trackDiv = document.createElement('div');
+                trackDiv.className = 'col-md-3 mb-4';
+                trackDiv.innerHTML = `
+                    <div class="border p-3 text-center" style="height: 350px; display: flex; flex-direction: column; justify-content: space-between;">
+                        ${track.album_cover ? `<img src="${track.album_cover}" alt="${track.name}" class="img-fluid mb-2" style="max-height: 150px; object-fit: cover;">` : '<h5>커버 이미지 없음</h5>'}
+                        <h2 class="h5">${track.name} - ${track.artist}</h2>
+                        <div class="d-flex justify-content-center align-items-center mt-2">
+                            <button onclick="playTrack('${track.uri}')" class="btn btn-circle me-2 ivory-button">Play</button>
+                            <button class="delete btn btn-circle ivory-button" data-uri="${track.uri}">삭제</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(trackDiv);
+                // appendchild는 부모 요소에 자식 요소를 추가하는 메서드
+            });
+
+            // 삭제 버튼 클릭 이벤트 리스너
+            const deleteButtons = document.querySelectorAll('.delete');
+            // .delete 클래스 가진 버튼들 선택하고 클릭 이벤트 리스너 추가
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const trackUri = this.getAttribute('data-uri');
+                    if (confirm("정말로 삭제하시겠습니까?")) {
+                        deleteTrack(trackUri);
+                        // 삭제 확인시 deleTrack 함수 호출
+                    }
+                });
+            });
+        } else {
+            container.innerHTML = '<p>저장된 트랙이 없습니다.</p>';
+        }
+    });
+
+    // 트랙 재생 함수
+    window.playTrack = (trackUri) => {
+        if (!window.deviceId) {
+            console.error('Device ID is not available. Please wait until the player is ready.');
+            return;
+        }
+
+        fetch("https://api.spotify.com/v1/me/player/play?device_id=" + window.deviceId, {
+            method: 'PUT',
+            body: JSON.stringify({ uris: [trackUri] }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+            }
+        }).then(response => {
+            if (response.status === 204) {
+                console.log('Track is playing');
+            } else {
+                response.json().then(data => {
+                    console.log('Failed to play track:', response.status, data);
+                });
+            }
+        }).catch(error => {
+            console.error('Error playing track:', error);
+        });
+    };
+
+    // 트랙 삭제 함수
+    function deleteTrack(trackUri) {
+        // 로컬 스토리지에서 저장된 트랙을 삭제합니다.
+        let savedTracks = JSON.parse(localStorage.getItem('savedTracks')) || [];
+        savedTracks = savedTracks.filter(track => track.uri !== trackUri); // 선택한 트랙 제거
+        localStorage.setItem('savedTracks', JSON.stringify(savedTracks)); // 업데이트된 트랙 저장
+
+        alert('곡이 삭제되었습니다!');
+        location.reload();  // 페이지 새로고침
+    }
+</script>
+<style>
+    .ivory-button {
+        background-color: #F8F9FA;
+        color: black;
+    }
+</style>
+{% endblock %}

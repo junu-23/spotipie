@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- 사이드바 -->
+        <div class="col-md-2" style="background-color: #f0f0f0; padding: 20px; height: 100vh; position: sticky; top: 0; overflow-y: auto;">
+            <ul class="list-unstyled">
+                <li>
+                    <a href="{% url 'spotipie:index' %}" class="d-block mb-3" style="text-decoration: none; color: #333; font-size: 1.2em;">홈</a>
+                </li>
+                <li>
+                    <a href="{% url 'spotipie:my_library'%}" class="d-block mb-3" style="text-decoration: none; color: #333; font-size: 1.2em;">내 라이브러리</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 콘텐츠 영역 -->
+        <div class="col-md-10">
+            <h1 class="text-center">SPOTIPIE</h1>
+
+            {% if tracks %}
+                <form method="get" action="{% url 'spotipie:search' %}" class="d-flex mb-4">
+                    <input type="text" name="query" placeholder="노래 제목 또는 아티스트를 입력하세요" class="form-control me-2">
+                    <button type="submit" class="ivory-button">검색</button>
+                </form>
+                <div class="row">
+                    {% for track in tracks %}
+                    <div class="col-md-3 mb-4">
+                        <div class="border p-3 text-center" style="height: 350px; display: flex; flex-direction: column; justify-content: space-between;">
+                            {% if track.album.images %}
+                                <img src="{{ track.album.images.0.url }}" alt="{{ track.name }}" class="img-fluid mb-2" style="max-height: 150px; object-fit: cover;">
+                            {% else %}
+                                <h5>커버 이미지 없음</h5>
+                            {% endif %}
+                            <h2 class="h5">{{ track.name }} - {{ track.artists.0.name }}</h2>
+                            <div class="d-flex justify-content-center align-items-center mt-2">
+                                <button onclick="playTrack('{{ track.uri }}')" class="btn btn-circle me-2 ivory-button">Play</button>
+                                <button onclick="saveTrack('{{ track.uri }}', '{{ track.name }}', '{{ track.artists.0.name }}', '{{ track.album.images.0.url }}')" class="btn btn-circle ivory-button">저장</button>
+                            </div>
+                            <a href="{% url 'spotipie:play_track' track.id %}" class="btn btn-white mt-0">곡 정보</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>트랙을 찾을 수 없습니다. 토큰이 만료되었는지 확인하세요.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
+
+<script>
+    const accessToken = "{{ access_token }}";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        window.onSpotifyWebPlaybackSDKReady = () => {
+            player = new Spotify.Player({
+                name: 'Spotipie Web Player',
+                getOAuthToken: cb => { cb(accessToken); },
+                volume: 0.5
+            });
+
+            player.addListener('ready', ({ device_id }) => {
+                console.log('Ready with Device ID', device_id);
+                window.deviceId = device_id; // deviceId를 전역 변수로 설정
+            });
+
+            player.connect();
+
+            // playTrack 함수 정의
+            window.playTrack = (trackUri) => {
+                if (!window.deviceId) {
+                    console.error('Device ID is not available. Please wait until the player is ready.');
+                    return;
+                }
+
+                fetch("https://api.spotify.com/v1/me/player/play?device_id=" + window.deviceId, {
+                    method: 'PUT',
+                    body: JSON.stringify({ uris: [trackUri] }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                }).then(response => {
+                    if (response.status === 204) {
+                        console.log('Track is playing');
+                    } else {
+                        response.json().then(data => {
+                            console.log('Failed to play track:', response.status, data);
+                        });
+                    }
+                }).catch(error => {
+                    console.error('Error playing track:', error);
+                });
+            };
+        };
+
+        // 검색된 트랙을 저장하는 함수
+        window.saveTrack = (trackUri, trackName, trackArtist, albumCover) => {
+            const savedTracks = JSON.parse(localStorage.getItem('savedTracks')) || [];
+
+            // 저장된 곡인지 확인
+            const isTrackAlreadySaved = savedTracks.some(track => track.uri === trackUri);
+
+            if (isTrackAlreadySaved) {
+                alert('이미 저장된 곡입니다.');
+                return;
+            }
+
+            const track = {
+                uri: trackUri,
+                name: trackName,
+                artist: trackArtist,
+                album_cover: albumCover
+            };
+            savedTracks.push(track);
+            localStorage.setItem('savedTracks', JSON.stringify(savedTracks));
+            alert('곡이 라이브러리에 저장되었습니다!');
+        };
+    });
+</script>
+<style>
+    .ivory-button{
+    background-color: #F8F9FA;
+    color: black;
+    }
+</style>
+
+{% endblock %}

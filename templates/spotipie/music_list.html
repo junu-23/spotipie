@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="display: flex;">
+    <!-- 사이드바 -->
+    <div style="width: 220px; background-color: #f0f0f0; padding: 20px; height: 100vh; display: flex; flex-direction: column; justify-content: space-between;">
+        <ul style="list-style-type: none; padding: 0; margin: 0;">
+            <li>
+                <a href="https://accounts.spotify.com/authorize?client_id=3b4032b2dd834248a0beba5614647b9b&response_type=code&redirect_uri=http://localhost:8000/spotipie/callback/&scope=user-library-read%20streaming%20user-modify-playback-state"
+                   style="text-decoration: none; color: #333; font-size: 1.2em; display: block; margin: 20px 0;">
+                    spotipie 토큰
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'spotipie:index' %}" style="text-decoration: none; color: #333; font-size: 1.2em; display: block; margin: 20px 0;">
+                    홈
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'spotipie:my_library'%}" style="text-decoration: none; color: #333; font-size: 1.2em; display: block; margin: 20px 0;">
+                    내 라이브러리
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 콘텐츠 영역 -->
+    <div style="flex: 1; padding: 20px;">
+        <h1 style="text-align: center;">SPOTIPIE</h1>
+        <form method="get" action="{% url 'spotipie:search' %}" class="d-flex mb-4">
+            <input type="text" name="query" placeholder="노래 제목 또는 아티스트를 입력하세요" class="form-control me-2">
+<!--            폼 태그는 웹 페이지에서 사용자로부터 데이터를 입력받고 서버로 전송하는 역할을 함-->
+            <button type="submit" class="ivory-button">검색</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
