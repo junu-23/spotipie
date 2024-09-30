@@ -3,7 +3,7 @@
 **spotipie는 사용자가 spotify와 상호작용하여 음악을 검색 및 재생하고, 자신만의 라이브러리를 만드는 등의 기능을 갖추었다. 또한 자신이 원하는 곡의 간단한 정보를 확인해
 볼 수도 있다.**  
 
-**사용된 스텍: 프론트엔드: html, css, javascript &nbsp;&nbsp;백엔드: django &nbsp;&nbsp;데이터베이스: sqlite  
+**사용된 스텍: 프론트엔드: html, css, javascript &nbsp;&nbsp;백엔드: python, django &nbsp;&nbsp;데이터베이스: sqlite  
 사용한 api: spotify**
 
 **spotipie 메인 화면**
